@@ -1,0 +1,7 @@
+main.py
+pyproject.toml
+ai_skribenten.egg-info/PKG-INFO
+ai_skribenten.egg-info/SOURCES.txt
+ai_skribenten.egg-info/dependency_links.txt
+ai_skribenten.egg-info/requires.txt
+ai_skribenten.egg-info/top_level.txt
