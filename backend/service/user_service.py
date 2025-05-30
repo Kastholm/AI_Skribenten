@@ -1,0 +1,59 @@
+import os
+import pymysql
+
+from service.database.connect import connect_to_database
+
+from dotenv import load_dotenv
+
+load_dotenv()  # Læs .env
+
+host     = os.getenv('DB_HOST')
+port     = int(os.getenv('DB_PORT', 3306))
+user     = os.getenv('DB_USER')
+password = os.getenv('DB_PASSWORD')
+dbname   = os.getenv('DB_NAME')
+
+
+def create_user(name: str, username: str, password: str) -> dict:
+
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO users (name, username, password) VALUES (%s, %s, %s)",
+                (name, username, password)
+            )
+            conn.commit()
+            return {"id": cursor.lastrowid, "name": name, "username": username}
+    
+    except pymysql.MySQLError as e:
+        print("Fejl under oprettelse af user:", e)
+    
+    finally:
+        conn.close()
+
+
+def login_user(username: str, password: str) -> dict:
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+            user = cursor.fetchone()
+            
+            if not user:
+                return {"success": False, "error": "Invalid username or password"}
+                
+            return {
+                "success": True,
+                "user": {
+                    "id": user[0],
+                    "name": user[1],
+                    "username": user[2],
+                    "role": user[4]
+                }
+            }
+    except pymysql.MySQLError as e:
+        print("Fejl under login:", e)
+        return {"success": False, "error": "Database error occurred"}
+    finally:
+        conn.close()

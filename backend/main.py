@@ -1,0 +1,24 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from router.user_router import router as user_router
+
+app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Your Svelte dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def home():
+    return {"message": "You're connected to the backend"}
+
+app.include_router(user_router)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
