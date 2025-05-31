@@ -14,6 +14,19 @@ password = os.getenv('DB_PASSWORD')
 dbname   = os.getenv('DB_NAME')
 
 
+def admin_get_all_users() -> dict:
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM users")
+            users = cursor.fetchall()
+            return {"users": users}
+    except pymysql.MySQLError as e:
+        print(f"Database error during login: {e}")
+        return {"success": False, "error": f"Database error occurred: {str(e)}"}
+    finally:
+        conn.close()
+
 def create_user(name: str, username: str, password: str) -> dict:
 
     conn = connect_to_database()
@@ -60,5 +73,24 @@ def login_user(username: str, password: str) -> dict:
     except pymysql.MySQLError as e:
         print(f"Database error during login: {e}")
         return {"success": False, "error": f"Database error occurred: {str(e)}"}
+    finally:
+        conn.close()
+
+def get_user_sites_service(user_id: int) -> dict:
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            # Hent alle sites, som brugeren er tilknyttet
+            cursor.execute("""
+                SELECT s.id, s.name, s.description, s.page_url
+                  FROM sites s
+                  JOIN user_sites us ON s.id = us.site_id
+                 WHERE us.user_id = %s
+            """, (user_id,))
+            sites = cursor.fetchall()
+            return {"sites": sites}
+    except pymysql.MySQLError as e:
+        print("Fejl under hentning af sites for user_id:", e)
+        return {"error": str(e)}
     finally:
         conn.close()

@@ -14,6 +14,18 @@ password = os.getenv('DB_PASSWORD')
 dbname   = os.getenv('DB_NAME')
 
 
+def admin_get_all_sites() -> dict:
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, name, description, page_url FROM sites")
+            sites = cursor.fetchall()
+            return {"sites": sites}
+    except pymysql.MySQLError as e:
+        print("Fejl under hentning af sites:", e)
+    finally:
+        conn.close()
+
 def create_site(name: str, logo_base64: str, description: str, page_url: str):
     #TODO Sørg for at user er admin
     try:
@@ -32,11 +44,11 @@ def create_site(name: str, logo_base64: str, description: str, page_url: str):
     finally:
         conn.close()
 
-def link_site_service(user_id: int, site_id: int):
+def admin_link_site_service(user_id: int, site_id: int, role: str):
     conn = connect_to_database()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("INSERT INTO user_sites (user_id, site_id) VALUES (%s, %s)", (user_id, site_id))
+            cursor.execute("INSERT INTO user_sites (user_id, site_id, role) VALUES (%s, %s, %s)", (user_id, site_id, role))
             conn.commit()
             return {"message": "Site linked successfully"}
     except pymysql.MySQLError as e:
