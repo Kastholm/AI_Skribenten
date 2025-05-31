@@ -23,5 +23,5 @@ def register(user: User):
 
 @router.post("/login")
 def login(user: LoginUser):
-    login_user(user.username, user.password)
-    return {"message": "User logged in successfully", "user": user}
+    result = login_user(user.username, user.password)
+    return result

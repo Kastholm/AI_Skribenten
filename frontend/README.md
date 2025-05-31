@@ -1,38 +1,30 @@
-# sv
+# AI_Skribenten
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+*Automatically synced with your [v0.dev](https://v0.dev) deployments*
 
-## Creating a project
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/kastholms-projects/v0-ai-skribenten)
+[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/Zz1femRd0nK)
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Overview
 
-```bash
-# create a new project in the current directory
-npx sv create
+This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
+Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
 
-# create a new project in my-app
-npx sv create my-app
-```
+## Deployment
 
-## Developing
+Your project is live at:
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+**[https://vercel.com/kastholms-projects/v0-ai-skribenten](https://vercel.com/kastholms-projects/v0-ai-skribenten)**
 
-```bash
-npm run dev
+## Build your app
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+Continue building your app on:
 
-## Building
+**[https://v0.dev/chat/projects/Zz1femRd0nK](https://v0.dev/chat/projects/Zz1femRd0nK)**
 
-To create a production version of your app:
+## How It Works
 
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+1. Create and modify your project using [v0.dev](https://v0.dev)
+2. Deploy your chats from the v0 interface
+3. Changes are automatically pushed to this repository
+4. Vercel deploys the latest version from this repository

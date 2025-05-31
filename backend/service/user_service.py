@@ -34,15 +34,20 @@ def create_user(name: str, username: str, password: str) -> dict:
 
 
 def login_user(username: str, password: str) -> dict:
+    print(f"Attempting login for user: {username}")
     conn = connect_to_database()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
+            query = "SELECT * FROM users WHERE username = %s AND password = %s"
+            print(f"Executing query: {query} with params: ({username}, ****)")
+            cursor.execute(query, (username, password))
             user = cursor.fetchone()
             
             if not user:
+                print("No user found with provided credentials")
                 return {"success": False, "error": "Invalid username or password"}
-                
+            
+            print(f"User found: {user}")
             return {
                 "success": True,
                 "user": {
@@ -53,7 +58,7 @@ def login_user(username: str, password: str) -> dict:
                 }
             }
     except pymysql.MySQLError as e:
-        print("Fejl under login:", e)
-        return {"success": False, "error": "Database error occurred"}
+        print(f"Database error during login: {e}")
+        return {"success": False, "error": f"Database error occurred: {str(e)}"}
     finally:
         conn.close()
