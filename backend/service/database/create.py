@@ -157,15 +157,23 @@ def create_tables():
                 `teaser` TEXT NOT NULL,
                 `content` TEXT NOT NULL,
                 `img` VARCHAR(255) NOT NULL,
-                `status` ENUM('scheduled','published','archived') NOT NULL DEFAULT 'scheduled',
+                `status` ENUM('validating','queued','scheduled','published') NOT NULL DEFAULT 'validating',
+                `response` ENUM('success','error', 'warning') NOT NULL DEFAULT 'success',
                 `scheduled_publish_at` DATETIME NULL,
                 `published_at` DATETIME NULL,
                 `url` VARCHAR(255) NULL,
                 `category_id` INT NOT NULL,
+                `user_id` INT NOT NULL,
+                `prompt_instruction` VARCHAR(255) NOT NULL,
                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (`site_id`) REFERENCES `sites` (`id`) ON DELETE CASCADE,
-                FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE RESTRICT
+                FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE RESTRICT,
+                FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+                CONSTRAINT `chk_articles_url_required` CHECK (
+                    status <> 'validating'
+                    OR url IS NOT NULL
+                )
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """,
         #🔵ARTICLE_TAGS
