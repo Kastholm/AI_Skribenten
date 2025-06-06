@@ -1,0 +1,100 @@
+import json
+import re
+from bs4 import BeautifulSoup
+import requests
+from artificial_intelligence.gpt_4o import gpt4o
+
+gpt4o = gpt4o()
+
+
+
+def extract_json_from_text(text):
+    match = re.search(r'\{.*\}', text, flags=re.DOTALL)
+    if match:
+        return json.loads(match.group(0))
+    return None
+
+""" def unsplash_collect_image(search_word):
+
+    search_word.replace(' ','-')
+    print(search_word)
+    url = f"https://unsplash.com/s/photos/{search_word}?license=free"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    image_container = soup.find("div", attrs={"data-testid": "search-photos-route"})
+
+    #find 1 figure in image_container
+    figure = image_container.find('figure')
+    print(figure)
+    #Direct to the href
+    href = figure.find('a')['href']
+    print(href)
+    image_url = requests.get(f'https://unsplash.com/photos/{href}')
+
+    soup = BeautifulSoup(image_url.text, 'html.parser')
+    print(soup)
+    #Copy img src
+    image = soup.find('img')['src']
+
+    return image """
+
+
+
+def validate_article_content(url):
+    title = ''
+    image = ''
+
+    response = requests.get(url)
+    #Remove class and ids
+    clean_response = re.sub(r'(class|id)="[^"]*"', '', response.text)
+    soup = BeautifulSoup(clean_response, 'html.parser')
+    #Remove SVG
+    for svg in soup.find_all('svg'):
+        svg.decompose()
+        
+    try:
+        if soup.find('article'):
+            html_content = soup.find('article')
+        elif soup.find('body'):
+            html_content = soup.find('body')
+        else:
+            raise Exception('No article or body found')
+
+        clean_article = re.sub(r'src="[^"]*"', '', html_content.text)
+        #Strip for mellemrum
+        article_content = re.sub(r'\s+', ' ', clean_article).strip()
+
+
+        ai_content = gpt4o.send_prompt(element="Text",prompt = f"""
+        Dette content er kopiret fra en artikel. Se derfor bort fra 'Læs mere' bokse, sociale medie delinger, kommentarer og andet indhold, der ikke er en del af artiklen.
+        Skriv på dansk hvad denne artikel handler om. Teksten du skriver skal senere bruges til at generere en artikel.
+        så vær grundig med at beskrive alt hvad artiklen handler om og dens vigtigste punkter, således at det er let at generere en fangende artikel ud fra det.
+        VIGTIGT: Udskriv i dette JSON format:
+        {{
+            "title": "Titel på artiklen",
+            "teaser": "En kort beskrivelse af artiklen",
+            "content": "Indholdet i artiklen",
+        }}
+        {article_content}
+        """)
+
+        ai_content = extract_json_from_text(ai_content)
+        print(ai_content)
+        title = ai_content['title']
+        clean_article = ai_content['content']
+        teaser = ai_content['teaser']
+        
+        """ try:
+            image = unsplash_collect_image(ai_content['image'])
+        except Exception as e:
+            print(e) """
+
+        valid_article = True
+
+    except AttributeError:
+        print('No article in this url')
+        valid_article = False
+
+ 
+    return title, image, clean_article, teaser, valid_article

@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-class Skribenten():
+class gpt4o():
 
     def __init__(self):
         load_dotenv()
@@ -36,11 +36,3 @@ class Skribenten():
                 print(f"Error: {e}")
         else:
             print("No client available")
-
-
-# Model - Control - View
-
-skribent = Skribenten()
-
-test = skribent.send_prompt(element="Text", prompt="Hello, world!")
-print(test)

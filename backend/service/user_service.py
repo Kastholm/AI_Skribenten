@@ -27,6 +27,7 @@ def admin_get_all_users() -> dict:
     finally:
         conn.close()
 
+
 def create_user(name: str, username: str, password: str) -> dict:
 
     conn = connect_to_database()

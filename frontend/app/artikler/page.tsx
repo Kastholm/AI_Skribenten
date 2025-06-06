@@ -57,21 +57,17 @@ export default function ArtiklerPage() {
     setValidationError("")
     setValidationSuccess("")
 
-    if (!url.trim()) {
-      setValidationError("Please enter a URL")
-      return
-    }
-
     setIsValidating(true)
 
     try {
-      // Encode the URL to handle special characters
-      const encodedUrl = encodeURIComponent(url)
-      const response = await fetch(`${API_HOST}/articles/validate/${encodedUrl}`, {
+      console.log("Sending URL:", url)
+
+      const response = await fetch(`${API_HOST}/articles/validate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ url: url }),
       })
 
       if (response.ok) {
@@ -84,7 +80,8 @@ export default function ArtiklerPage() {
           fetchArticles(activeSiteId)
         }
       } else {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: "Failed to validate URL" }))
+        console.error("Validation error response:", errorData)
         setValidationError(errorData.error || "Failed to validate URL")
       }
     } catch (error) {
@@ -247,7 +244,7 @@ export default function ArtiklerPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Valider Artikel URL</CardTitle>
-                <CardDescription>Indtast en URL for at validere og behandle artiklen</CardDescription>
+                <CardDescription>Indtast enhver URL - alle URLs accepteres og behandles af systemet</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
@@ -257,7 +254,7 @@ export default function ArtiklerPage() {
                     </Label>
                     <Input
                       id="url"
-                      placeholder="https://example.com/artikel"
+                      placeholder="Indtast enhver URL..."
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       onKeyDown={(e) => {
