@@ -55,3 +55,15 @@ def admin_link_site_service(user_id: int, site_id: int, role: str):
         print("Fejl under linkning af site:", e)
     finally:
         conn.close()
+
+def get_site_by_id_service(site_id: int):
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, name, description, page_url FROM sites WHERE id = %s", (site_id,))
+            site = cursor.fetchone()
+            return site
+    except pymysql.MySQLError as e:
+        print("Fejl under hentning af site:", e)
+    finally:
+        conn.close()

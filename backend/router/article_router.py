@@ -19,6 +19,7 @@ class FullArticle(BaseModel):
     scheduled_publish_at: str
     published_at: str
     url: str
+    instructions: str
     prompt_instruction: str
     user_id: int
     category_id: int
@@ -30,6 +31,7 @@ class UpdateArticle(BaseModel):
     content: str
     img: str
     prompt_instruction: str
+    instructions: str
     scheduled_publish_at: str
     category_id: int
     user_id: int
@@ -37,11 +39,13 @@ class UpdateArticle(BaseModel):
 
 class ValidateRequest(BaseModel):
     url: str
+    site_id: int
+    user_id: int
 
 
 @router.post("/validate")
 def validate_article(request: ValidateRequest):
-    return validate_article_service(request.url)
+    return validate_article_service(request.url, request.site_id, request.user_id)
 
 
 @router.put("/update_article")

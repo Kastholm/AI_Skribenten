@@ -1,6 +1,7 @@
 import os
 import pymysql
 
+from service.site_service import get_site_by_id_service
 from service.article_service.validate_article import validate_article_content
 from service.database.connect import connect_to_database
 
@@ -18,38 +19,54 @@ dbname   = os.getenv('DB_NAME')
 #Klik create knap og validerings process startes.
 #indsætter alt dataen.
 
-def validate_article_service(url):
+def validate_article_service(url, site_id, user_id):
 
     #Validation skal sende kun url. Resten skal være tomme strings, så den går igennem.
-    site_id = 1
     status = 'validating'
     response = 'success'
-    prompt_instruction = 'test'
-    user_id = 2
+    #instructions = 'test' #Skal jo hentes fra site
+    prompt_instruction = 'testprompt' #def prompt udtænkt af gpt TANKE #Men skal hentes fra en user.
     category_id = 2
 
+    # Get site information including description
+    site = get_site_by_id_service(site_id)
+    instructions = site[2]
+    print(site)
+    if not site:
+        return {"error": "Site not found"}
     title, image, content, teaser, valid_article = validate_article_content(url)
     print(f"DEBUG: valid_article = {valid_article!r}, title = {title!r}")
     if not valid_article:
         return {"error": "Ingen <article> fundet i den angivne URL"}
 
     conn = connect_to_database()
+
     try:
         with conn.cursor() as cursor:
             print("DEBUG: før cursor.execute")
             cursor.execute(
-                "INSERT INTO articles (site_id, title, teaser, content, img, status, response, url, prompt_instruction, user_id, category_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (site_id, title, teaser, content, image, status, response, url, prompt_instruction, user_id, category_id)
+                "INSERT INTO articles (site_id, title, teaser, content, img, status, response, url, prompt_instruction, instructions, user_id, category_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (site_id, title, teaser, content, image, status, response, url, prompt_instruction, instructions, user_id, category_id)
             )
             print("DEBUG: SQL-statement blev eksekveret")
             conn.commit()
             print("DEBUG: efter commit")
-            return {"title": title, "content": content, "image": image, "url": url}
+            return {
+                "title": title, 
+                "content": content, 
+                "image": image, 
+                "url": url, 
+                "instructions": instructions,
+            }
     except pymysql.MySQLError as e:
         print("DEBUG: SQL Error:", str(e))
         return {"error": "Fejl under oprettelse af artikel", "detail": str(e)}
     finally:
         conn.close()
+
+
+
+
 
     #Teaser? (Men så skal GPT generere en)
     #Titel

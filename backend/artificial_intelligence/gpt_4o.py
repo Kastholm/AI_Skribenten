@@ -14,12 +14,12 @@ class gpt4o():
         else:
             print("None or not usable API key provided")
 
-    def send_prompt(self, element, prompt):
+    def send_prompt(self, element, prompt, model="gpt-4o-mini"):
         if self.client:
-            try:
+            try: 
                 if element == "Text":
                     response = self.client.responses.create(
-                        model="gpt-4o",
+                        model=model,
                         instructions="You are awesome",
                         input=prompt,
                     )
@@ -36,3 +36,9 @@ class gpt4o():
                 print(f"Error: {e}")
         else:
             print("No client available")
+
+
+            '''
+            Hent site desc, vis på frontend. Denne sendes videre til artikel skrivning.
+            
+            '''

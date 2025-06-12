@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, Loader2, Copy } from "lucide-react"
+import { AlertCircle, Loader2, Copy, Info } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { API_HOST } from "@/app/env"
 import { useAuth } from "@/app/context/auth-context"
@@ -33,6 +33,7 @@ type Article = {
   status: string
   response: string
   prompt_instruction: string
+  instructions: string
   created_at: string
 }
 
@@ -42,6 +43,27 @@ type Prompt = {
   description: string
   user_id: number
   created_at: string
+}
+
+type Site = {
+  id: number
+  name: string
+  description: string
+  page_url: string
+}
+
+type User = {
+  id: number
+  name: string
+  username: string
+  role: string
+}
+
+type Category = {
+  id: number
+  name: string
+  site_id: number
+  description?: string
 }
 
 type EditArticleDialogProps = {
@@ -61,6 +83,7 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
     content: "",
     img: "",
     prompt_instruction: "",
+    instructions: "",
     scheduled_publish_at: "",
     category_id: 1,
     user_id: 1,
@@ -70,18 +93,41 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
   })
   const [prompts, setPrompts] = useState<Prompt[]>([])
   const [selectedPromptId, setSelectedPromptId] = useState<string>("")
+  const [siteInfo, setSiteInfo] = useState<Site | null>(null)
+  const [userInfo, setUserInfo] = useState<User | null>(null)
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(false)
+  const [isLoadingSiteInfo, setIsLoadingSiteInfo] = useState(false)
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
   const [error, setError] = useState("")
 
-  // Load article data and prompts when dialog opens
+  // Load article data and related info when dialog opens
   useEffect(() => {
     if (article && isOpen && user?.id) {
       fetchArticleDetails(article.id)
       fetchUserPrompts(user.id)
+      fetchAllUsers()
     }
   }, [article, isOpen, user?.id])
+
+  // Fetch site info and categories when site_id changes
+  useEffect(() => {
+    if (formData.site_id && formData.site_id > 0) {
+      fetchSiteInfo(formData.site_id)
+      fetchCategories(formData.site_id)
+    }
+  }, [formData.site_id])
+
+  // Fetch user info when user_id changes
+  useEffect(() => {
+    if (formData.user_id && formData.user_id > 0 && allUsers.length > 0) {
+      const foundUser = allUsers.find((u) => u.id === formData.user_id)
+      setUserInfo(foundUser || null)
+    }
+  }, [formData.user_id, allUsers])
 
   const fetchArticleDetails = async (articleId: number) => {
     setIsLoading(true)
@@ -100,24 +146,27 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
         console.log("Article data:", articleData)
 
         if (Array.isArray(articleData) && articleData.length > 0) {
-          // Map article data from array format
-          // Based on the table structure:
-          // id, site_id, title, teaser, content, img, status, response, scheduled_publish_at, published_at, url, category_id, user_id, prompt_instruction, created_at, updated_at
+          // Korrekt mapping baseret på den opdaterede tabel struktur:
+          // id, site_id, title, teaser, content, img, status, response, scheduled_publish_at, published_at, url, prompt_instruction, instructions, user_id, category_id, created_at, updated_at
           const data = articleData
           setFormData({
-            id: data[0] || 0,
-            title: data[2] || "",
-            teaser: data[3] || "",
-            content: data[4] || "",
-            img: data[5] || "",
-            url: data[10] || "",
-            site_id: data[1] || 1,
-            user_id: data[12] || 1,
-            category_id: data[11] || 1,
-            status: data[6] || "",
-            response: data[7] || "success",
-            prompt_instruction: data[13] || "",
-            scheduled_publish_at: data[8] ? new Date(data[8]).toISOString().slice(0, 16) : "",
+            id: data[0] || 0, // id
+            site_id: data[1] || 1, // site_id
+            title: data[2] || "", // title
+            teaser: data[3] || "", // teaser
+            content: data[4] || "", // content
+            img: data[5] || "", // img
+            status: data[6] || "", // status
+            response: data[7] || "success", // response
+            scheduled_publish_at: data[8] ? new Date(data[8]).toISOString().slice(0, 16) : "", // scheduled_publish_at
+            // data[9] er published_at - springer over
+            url: data[10] || "", // url
+            prompt_instruction: data[11] || "", // prompt_instruction
+            instructions: data[12] || "", // instructions
+            user_id: data[13] || 1, // user_id
+            category_id: data[14] || 1, // category_id
+            // data[15] er created_at
+            // data[16] er updated_at
           })
         }
       } else {
@@ -128,6 +177,109 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
       setError("An error occurred while loading article details")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchSiteInfo = async (siteId: number) => {
+    setIsLoadingSiteInfo(true)
+
+    try {
+      // Direkte fetch af site data
+      const response = await fetch(`${API_HOST}/sites/get_site_by_id/${siteId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const siteData = await response.json()
+        console.log("Site data:", siteData)
+
+        if (Array.isArray(siteData) && siteData.length >= 3) {
+          // Antager at siteData er [id, name, description, page_url]
+          const site: Site = {
+            id: siteData[0],
+            name: siteData[1],
+            description: siteData[2],
+            page_url: siteData[3],
+          }
+          setSiteInfo(site)
+
+          // Opdater instructions med site beskrivelsen hvis den er tom
+          setFormData((prev) => ({
+            ...prev,
+            instructions: prev.instructions || site.description || "",
+          }))
+        }
+      } else {
+        console.error("Failed to fetch site info, status:", response.status)
+      }
+    } catch (error) {
+      console.error("Error fetching site info:", error)
+    } finally {
+      setIsLoadingSiteInfo(false)
+    }
+  }
+
+  const fetchCategories = async (siteId: number) => {
+    setIsLoadingCategories(true)
+
+    try {
+      const response = await fetch(`${API_HOST}/categories/get_categories/${siteId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const categoriesData = await response.json()
+        console.log("Categories data:", categoriesData)
+
+        if (Array.isArray(categoriesData)) {
+          // Antager at hver kategori er [id, name, site_id, description]
+          const formattedCategories: Category[] = categoriesData.map((catArray: any[]) => ({
+            id: catArray[0],
+            name: catArray[1],
+            site_id: catArray[2],
+            description: catArray[3],
+          }))
+          setCategories(formattedCategories)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error)
+    } finally {
+      setIsLoadingCategories(false)
+    }
+  }
+
+  const fetchAllUsers = async () => {
+    try {
+      const response = await fetch(`${API_HOST}/users/info`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const usersData = await response.json()
+        if (usersData.users && Array.isArray(usersData.users)) {
+          // Map users data from array format
+          // [id, name, username, password, role]
+          const formattedUsers: User[] = usersData.users.map((userArray: any[]) => ({
+            id: userArray[0],
+            name: userArray[1],
+            username: userArray[2],
+            role: userArray[4],
+          }))
+          setAllUsers(formattedUsers)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error)
     }
   }
 
@@ -176,6 +328,10 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
     }
   }
 
+  const handleCategorySelect = (categoryId: string) => {
+    setFormData((prev) => ({ ...prev, category_id: Number.parseInt(categoryId) }))
+  }
+
   const handleSave = async () => {
     setIsSaving(true)
     setError("")
@@ -184,10 +340,12 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
       const updateData = {
         id: article?.id,
         title: formData.title,
+        teaser: formData.teaser,
         url: formData.url,
         content: formData.content,
         img: formData.img,
         prompt_instruction: formData.prompt_instruction,
+        instructions: formData.instructions,
         scheduled_publish_at: formData.scheduled_publish_at || "", // Send empty string instead of null
         category_id: formData.category_id,
         user_id: formData.user_id,
@@ -225,6 +383,7 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
       content: "",
       img: "",
       prompt_instruction: "",
+      instructions: "",
       scheduled_publish_at: "",
       category_id: 1,
       user_id: 1,
@@ -234,13 +393,20 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
     })
     setPrompts([])
     setSelectedPromptId("")
+    setSiteInfo(null)
+    setUserInfo(null)
+    setAllUsers([])
+    setCategories([])
     setError("")
     onClose()
   }
 
+  // Find den aktuelle kategori
+  const currentCategory = categories.find((cat) => cat.id === formData.category_id)
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Rediger Artikel</DialogTitle>
           <DialogDescription>Rediger artikel information og gem ændringerne.</DialogDescription>
@@ -282,6 +448,27 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
                 onChange={(e) => handleInputChange("content", e.target.value)}
                 rows={6}
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="instructions">Site Instruktioner</Label>
+                <Info className="h-4 w-4 text-blue-500" />
+                {isLoadingSiteInfo && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+              </div>
+              <Textarea
+                id="instructions"
+                value={formData.instructions || "Ingen instruktioner tilgængelige"}
+                onChange={(e) => handleInputChange("instructions", e.target.value)}
+                className="bg-blue-50 border-blue-200"
+                rows={3}
+                placeholder="Site instruktioner"
+              />
+              {siteInfo && (
+                <p className="text-xs text-blue-600">
+                  Site: {siteInfo.name} ({siteInfo.page_url}) - Disse instruktioner bruges automatisk i AI prompts.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -332,23 +519,60 @@ export function EditArticleDialog({ article, isOpen, onClose, onSave }: EditArti
                   onChange={(e) => handleInputChange("scheduled_publish_at", e.target.value)}
                 />
               </div>
+
+              {/* Kategori dropdown i stedet for ID input */}
               <div className="space-y-2">
-                <Label htmlFor="category">Kategori ID</Label>
-                <Input
-                  id="category"
-                  type="number"
-                  value={formData.category_id}
-                  onChange={(e) => handleInputChange("category_id", Number.parseInt(e.target.value) || 1)}
-                />
+                <Label htmlFor="category">Kategori</Label>
+                {isLoadingCategories ? (
+                  <div className="flex items-center gap-2 p-2 border rounded-md">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-muted-foreground">Indlæser kategorier...</span>
+                  </div>
+                ) : categories.length > 0 ? (
+                  <Select value={formData.category_id.toString()} onValueChange={handleCategorySelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Vælg kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex items-center gap-2 p-2 border rounded-md">
+                    <span className="text-muted-foreground">
+                      {currentCategory ? currentCategory.name : `Kategori ID: ${formData.category_id}`}
+                    </span>
+                  </div>
+                )}
+                {currentCategory && (
+                  <p className="text-xs text-muted-foreground">
+                    {currentCategory.description || `Kategori: ${currentCategory.name}`}
+                  </p>
+                )}
               </div>
+
+              {/* Bruger visning (read-only) */}
               <div className="space-y-2">
-                <Label htmlFor="user">Bruger ID</Label>
-                <Input
-                  id="user"
-                  type="number"
-                  value={formData.user_id}
-                  onChange={(e) => handleInputChange("user_id", Number.parseInt(e.target.value) || 1)}
-                />
+                <Label htmlFor="user">Tildelt Bruger</Label>
+                <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
+                  {userInfo ? (
+                    <div className="flex flex-col">
+                      <span className="font-medium">{userInfo.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        @{userInfo.username} ({userInfo.role})
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">Bruger {formData.user_id}</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Artiklen er tildelt til brugeren der startede valideringsprocessen
+                </p>
               </div>
             </div>
 

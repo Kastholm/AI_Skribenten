@@ -1,7 +1,7 @@
 from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from service.site_service import admin_get_all_sites, admin_link_site_service, create_site
+from service.site_service import admin_get_all_sites, admin_link_site_service, create_site, get_site_by_id_service
 
 router = APIRouter(
     prefix="/sites",
@@ -9,10 +9,17 @@ router = APIRouter(
 )
 
 class Site(BaseModel):
+    id: int
     name: str
     logo: str
     page_url: str
     description: str
+
+class SiteInfo(BaseModel):
+    id: int
+    name: str
+    description: str
+    page_url: str
 
 class Role(str, Enum):
     viewer = "viewer"
@@ -36,4 +43,9 @@ def add_site(site: Site):
 @router.post("/link_site")
 def link_site(link_site: LinkSite):
     result = admin_link_site_service(link_site.user_id, link_site.site_id, link_site.role)
+    return result
+
+@router.get("/get_site_by_id/{site_id}")
+def get_site_by_id(site_id: int):
+    result = get_site_by_id_service(site_id)
     return result
