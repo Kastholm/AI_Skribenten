@@ -24,6 +24,12 @@ class gpt4o():
                         input=prompt,
                     )
                     return response.output_text
+                elif element == "Web":
+                    response = self.client.chat.completions.create(
+                        model="gpt-4o-mini-search-preview",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    return response.choices[0].message.content
                 elif element == "Image":
                     response = self.client.images.generate(
                         model="dall-e-3",
@@ -36,9 +42,3 @@ class gpt4o():
                 print(f"Error: {e}")
         else:
             print("No client available")
-
-
-            '''
-            Hent site desc, vis på frontend. Denne sendes videre til artikel skrivning.
-            
-            '''

@@ -19,25 +19,30 @@ dbname   = os.getenv('DB_NAME')
 #Klik create knap og validerings process startes.
 #indsætter alt dataen.
 
+def write_article_service(article):
+    print(article)
+    pass
+    # Step 1 = Skriv artikel og udgiv til CMS
+    # Sted 2 = If success, skift artikel status til published
+
 def validate_article_service(url, site_id, user_id):
 
     #Validation skal sende kun url. Resten skal være tomme strings, så den går igennem.
     status = 'validating'
     response = 'success'
-    #instructions = 'test' #Skal jo hentes fra site
-    prompt_instruction = 'testprompt' #def prompt udtænkt af gpt TANKE #Men skal hentes fra en user.
     category_id = 2
 
     # Get site information including description
     site = get_site_by_id_service(site_id)
     instructions = site[2]
-    print(site)
     if not site:
         return {"error": "Site not found"}
-    title, image, content, teaser, valid_article = validate_article_content(url)
-    print(f"DEBUG: valid_article = {valid_article!r}, title = {title!r}")
+
+    # Get data from ChatGPT
+    title, image, content, teaser, prompt_instruction, valid_article = validate_article_content(url, instructions)
     if not valid_article:
         return {"error": "Ingen <article> fundet i den angivne URL"}
+
 
     conn = connect_to_database()
 

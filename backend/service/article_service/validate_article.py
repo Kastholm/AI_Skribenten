@@ -41,7 +41,7 @@ def extract_json_from_text(text):
 
 
 
-def validate_article_content(url):
+def validate_article_content(url, instructions):
     title = ''
     image = ''
 
@@ -66,15 +66,23 @@ def validate_article_content(url):
         article_content = re.sub(r'\s+', ' ', clean_article).strip()
 
 
+
         ai_content = gpt4o.send_prompt(element="Text",prompt = f"""
         Dette content er kopiret fra en artikel. Se derfor bort fra 'Læs mere' bokse, sociale medie delinger, kommentarer og andet indhold, der ikke er en del af artiklen.
         Skriv på dansk hvad denne artikel handler om. Teksten du skriver skal senere bruges til at generere en artikel.
-        så vær grundig med at beskrive alt hvad artiklen handler om og dens vigtigste punkter, således at det er let at generere en fangende artikel ud fra det.
+        Vær grundig med at beskrive alt hvad artiklen handler om og dens vigtigste punkter, således at det er let at generere en fangende artikel ud fra det.
+        Læs mediets beskrivelse hvor artiklen skal udgives {instructions}. 
+        
+        Ud fra artikel content og mediets beskrivelse skal du generere en prompt til en proffesionel
+        journalist som skal skrive en spændende, fangende og dybdegående artikel.
+        Find til sidst et licensfrit billede der passer til artiklens indhold og returner en url.
         VIGTIGT: Udskriv i dette JSON format:
         {{
             "title": "Titel på artiklen",
             "teaser": "En kort beskrivelse af artiklen",
             "content": "Indholdet i artiklen",
+            "prompt": "Fokus punkter og prompt til AI journalisten",
+            "image_url": "url til licensfrit billede
         }}
         {article_content}
         """)
@@ -84,6 +92,20 @@ def validate_article_content(url):
         title = ai_content['title']
         clean_article = ai_content['content']
         teaser = ai_content['teaser']
+        prompt = ai_content['prompt']
+
+        web_image = gpt4o.send_prompt(model="gpt-4o-mini-search-preview", element="Web", prompt = f"""
+        Søg online og find et licensfrit billede som passer til denne artikel.
+        Billedet skal som minimum være 1024x600 pixels.
+        URL skal enten ende på .png .jpg .jpeg .svg, søg efter billeder indtil dette er gyldigt.
+        Tag URL ud af HTML koden fra den side du tilgår.
+        Titel: {title}
+        Teaser: {teaser}
+        Content: {clean_article}
+        Returner nu kun 1 plain URL tilbage. Intet tekst eller andet udover en ren URL.                
+        """)
+        print(web_image)
+        image = web_image
         
         """ try:
             image = unsplash_collect_image(ai_content['image'])
@@ -97,4 +119,4 @@ def validate_article_content(url):
         valid_article = False
 
  
-    return title, image, clean_article, teaser, valid_article
+    return title, image, clean_article, teaser, prompt, valid_article

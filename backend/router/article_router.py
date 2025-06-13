@@ -1,7 +1,7 @@
 from enum import Enum
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from service.article_service.article_service import get_scheduled_articles_service, get_unvalidated_articles_service, validate_article_service, update_article_service, get_article_service, delete_article_service
+from service.article_service.article_service import get_scheduled_articles_service, get_unvalidated_articles_service, validate_article_service, update_article_service, get_article_service, delete_article_service, write_article_service
 
 router = APIRouter(
     prefix="/articles",
@@ -37,6 +37,17 @@ class UpdateArticle(BaseModel):
     user_id: int
     teaser: str
 
+class PublishArticle(BaseModel):
+    site_id: int
+    title: str
+    teaser: str
+    content: str
+    img: str
+    prompt_instructions: str
+    instructions: str
+    user_id: int
+    category_id: int
+
 class ValidateRequest(BaseModel):
     url: str
     site_id: int
@@ -46,6 +57,10 @@ class ValidateRequest(BaseModel):
 @router.post("/validate")
 def validate_article(request: ValidateRequest):
     return validate_article_service(request.url, request.site_id, request.user_id)
+
+@router.post("/write_article")
+def write_article(article: PublishArticle):
+    return write_article_service(article)
 
 
 @router.put("/update_article")
