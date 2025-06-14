@@ -7,38 +7,11 @@ from artificial_intelligence.gpt_4o import gpt4o
 gpt4o = gpt4o()
 
 
-
 def extract_json_from_text(text):
     match = re.search(r'\{.*\}', text, flags=re.DOTALL)
     if match:
         return json.loads(match.group(0))
     return None
-
-""" def unsplash_collect_image(search_word):
-
-    search_word.replace(' ','-')
-    print(search_word)
-    url = f"https://unsplash.com/s/photos/{search_word}?license=free"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    image_container = soup.find("div", attrs={"data-testid": "search-photos-route"})
-
-    #find 1 figure in image_container
-    figure = image_container.find('figure')
-    print(figure)
-    #Direct to the href
-    href = figure.find('a')['href']
-    print(href)
-    image_url = requests.get(f'https://unsplash.com/photos/{href}')
-
-    soup = BeautifulSoup(image_url.text, 'html.parser')
-    print(soup)
-    #Copy img src
-    image = soup.find('img')['src']
-
-    return image """
-
 
 
 def validate_article_content(url, instructions):
@@ -120,3 +93,27 @@ def validate_article_content(url, instructions):
 
  
     return title, image, clean_article, teaser, prompt, valid_article
+""" def unsplash_collect_image(search_word):
+
+    search_word.replace(' ','-')
+    print(search_word)
+    url = f"https://unsplash.com/s/photos/{search_word}?license=free"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    image_container = soup.find("div", attrs={"data-testid": "search-photos-route"})
+
+    #find 1 figure in image_container
+    figure = image_container.find('figure')
+    print(figure)
+    #Direct to the href
+    href = figure.find('a')['href']
+    print(href)
+    image_url = requests.get(f'https://unsplash.com/photos/{href}')
+
+    soup = BeautifulSoup(image_url.text, 'html.parser')
+    print(soup)
+    #Copy img src
+    image = soup.find('img')['src']
+
+    return image """

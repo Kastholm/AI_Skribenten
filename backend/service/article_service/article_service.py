@@ -1,6 +1,7 @@
 import os
 import pymysql
 
+from service.article_service.write_article import write_article_content
 from service.site_service import get_site_by_id_service
 from service.article_service.validate_article import validate_article_content
 from service.database.connect import connect_to_database
@@ -15,13 +16,25 @@ user     = os.getenv('DB_USER')
 password = os.getenv('DB_PASSWORD')
 dbname   = os.getenv('DB_NAME')
 
+wp_name = 'root'
+wp_pass = os.getenv('WP_AUTH')
+curr_site = 'opdateret.dk'
+
 #CP url
 #Klik create knap og validerings process startes.
 #indsætter alt dataen.
 
 def write_article_service(article):
-    print(article)
-    pass
+    #print(article)
+    #print(article.title)
+    # Vælg kategori
+    # Vælg tag
+    # Vælg journalist
+    # WP url MANGLER fra frontend
+    #Endpoint = WP_URL/wp-json/wp/v2/posts
+
+    write_article_content(article)
+    
     # Step 1 = Skriv artikel og udgiv til CMS
     # Sted 2 = If success, skift artikel status til published
 
