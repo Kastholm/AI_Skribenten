@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import re
@@ -7,12 +8,25 @@ from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
 
 from artificial_intelligence.gpt_4o import gpt4o
+from service.database.connect import connect_to_database
+
 load_dotenv()  # Læs .env
 wp_name = 'root'
 wp_pass = os.getenv('WP_AUTH')
 curr_site = 'opdateret.dk'
 
 gpt4o_instance = gpt4o()
+
+def article_publish_service(article_id: int, status: str, published_at: datetime):
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE articles SET status = %s, published_at = %s WHERE id = %s", (status, published_at, article_id))
+            conn.commit()
+    except pymysql.MySQLError as e:
+        return {"error": "Fejl under opdatering af artikelstatus", "detail": str(e)}
+    finally:
+        conn.close()
 
 
 def extract_json_from_text(text):
@@ -48,8 +62,6 @@ def get_and_set_category(article):
 
 
 
-
-def write_article_content(article):
    # print(article)
    # print(article.title)
     # Vælg kategori
@@ -58,7 +70,9 @@ def write_article_content(article):
     # WP url MANGLER fra frontend
     #Endpoint = WP_URL/wp-json/wp/v2/posts
 
-    category = get_and_set_category(article)
+    #category = get_and_set_category(article)
+
+def write_article_content(article):
 
     data = gpt4o_instance.send_prompt(element="Text", model="gpt-4o", prompt = f"""
     Her har du alt data fra en artikel, det site du skal skrive på, samt yderligere informationer {article}.
@@ -86,9 +100,12 @@ def write_article_content(article):
     print(data)
 
     response = requests.post(url, json=data, auth=HTTPBasicAuth(wp_name, wp_pass))
+    if response.status_code == 201:
+        article_publish_service(article.id, "published", published_at = datetime.datetime.now())
+        return {"message": "Artikel oprettet", "status_code": response.status_code, "article_id": response.json()["id"]}
+    else:
+        return {"message": "Fejl under oprettelse af artikel", "status_code": response.status_code, "article_id": None}
 
-    print(response.status_code)
-    print(response.json())
 
     # Step 1 = Skriv artikel og udgiv til CMS
     # Sted 2 = If success, skift artikel status til published

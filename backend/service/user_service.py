@@ -13,21 +13,6 @@ user     = os.getenv('DB_USER')
 password = os.getenv('DB_PASSWORD')
 dbname   = os.getenv('DB_NAME')
 
-
-def admin_get_all_users() -> dict:
-    conn = connect_to_database()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM users")
-            users = cursor.fetchall()
-            return {"users": users}
-    except pymysql.MySQLError as e:
-        print(f"Database error during login: {e}")
-        return {"success": False, "error": f"Database error occurred: {str(e)}"}
-    finally:
-        conn.close()
-
-
 def create_user(name: str, username: str, password: str) -> dict:
 
     conn = connect_to_database()

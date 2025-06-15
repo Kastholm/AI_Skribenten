@@ -38,8 +38,6 @@ def validate_article_content(url, instructions):
         #Strip for mellemrum
         article_content = re.sub(r'\s+', ' ', clean_article).strip()
 
-
-
         ai_content = gpt4o.send_prompt(element="Text",prompt = f"""
         Dette content er kopiret fra en artikel. Se derfor bort fra 'Læs mere' bokse, sociale medie delinger, kommentarer og andet indhold, der ikke er en del af artiklen.
         Skriv på dansk hvad denne artikel handler om. Teksten du skriver skal senere bruges til at generere en artikel.
@@ -67,23 +65,6 @@ def validate_article_content(url, instructions):
         teaser = ai_content['teaser']
         prompt = ai_content['prompt']
 
-        web_image = gpt4o.send_prompt(model="gpt-4o-mini-search-preview", element="Web", prompt = f"""
-        Søg online og find et licensfrit billede som passer til denne artikel.
-        Billedet skal som minimum være 1024x600 pixels.
-        URL skal enten ende på .png .jpg .jpeg .svg, søg efter billeder indtil dette er gyldigt.
-        Tag URL ud af HTML koden fra den side du tilgår.
-        Titel: {title}
-        Teaser: {teaser}
-        Content: {clean_article}
-        Returner nu kun 1 plain URL tilbage. Intet tekst eller andet udover en ren URL.                
-        """)
-        print(web_image)
-        image = web_image
-        
-        """ try:
-            image = unsplash_collect_image(ai_content['image'])
-        except Exception as e:
-            print(e) """
 
         valid_article = True
 
@@ -91,6 +72,24 @@ def validate_article_content(url, instructions):
         print('No article in this url')
         valid_article = False
 
+# IMage logic for later
+        #web_image = gpt4o.send_prompt(model="gpt-4o-mini-search-preview", element="Web", prompt = f"""
+        #Søg online og find et licensfrit billede som passer til denne artikel.
+        #Billedet skal som minimum være 1024x600 pixels.
+        #URL skal enten ende på .png .jpg .jpeg .svg, søg efter billeder indtil dette er gyldigt.
+        #Tag URL ud af HTML koden fra den side du tilgår.
+        #Titel: {title}
+        #Teaser: {teaser}
+        #Content: {clean_article}
+        #Returner nu kun 1 plain URL tilbage. Intet tekst eller andet udover en ren URL.                
+        #""")
+        #print(web_image)
+        #image = web_image
+        
+        """ try:
+            image = unsplash_collect_image(ai_content['image'])
+        except Exception as e:
+            print(e) """
  
     return title, image, clean_article, teaser, prompt, valid_article
 """ def unsplash_collect_image(search_word):

@@ -43,3 +43,25 @@ def get_all_prompts(user_id: int):
         print("Fejl under hentning af prompts:", e)
     finally:
         conn.close()
+
+def delete_user_prompt_service(prompt_id: int, user_id: int):
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM prompts WHERE id = %s AND user_id = %s", (prompt_id, user_id))
+            conn.commit()
+    except pymysql.MySQLError as e:
+        print("Fejl under sletning af prompt:", e)
+    finally:
+        conn.close()
+
+def update_user_prompt_service(prompt_id: int, name: str, description: str, user_id: int):
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE prompts SET name = %s, description = %s WHERE id = %s AND user_id = %s", (name, description, prompt_id, user_id))
+            conn.commit()
+    except pymysql.MySQLError as e:
+        print("Fejl under opdatering af prompt:", e)
+    finally:
+        conn.close()

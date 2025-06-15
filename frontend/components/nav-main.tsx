@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, UserPlus, Globe, Link, MessageSquare, FileText, Calendar, Clock } from "lucide-react"
+import { ChevronRight, UserPlus, Globe, Link, MessageSquare, FileText, Archive, Settings } from "lucide-react"
 import { useAuth } from "@/app/context/auth-context"
 import NextLink from "next/link"
 
@@ -39,42 +39,38 @@ export function NavMain() {
     },
   ]
 
+  // Settings items
+  const settingsItems = [
+    {
+      title: "Page Settings",
+      url: "/settings/page",
+      icon: Globe,
+    },
+  ]
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {/* Artikler dropdown - always open */}
-        <Collapsible asChild defaultOpen={true} className="group/collapsible">
-          <SidebarMenuItem>
-            <CollapsibleTrigger asChild>
-              <SidebarMenuButton tooltip="Artikler">
-                <FileText className="h-4 w-4" />
-                <span>Artikler</span>
-                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-              </SidebarMenuButton>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton asChild>
-                    <NextLink href="/artikler/planlagte">
-                      <Calendar className="h-4 w-4" />
-                      <span>Planlagte Artikler</span>
-                    </NextLink>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton asChild>
-                    <NextLink href="/artikler/afventende">
-                      <Clock className="h-4 w-4" />
-                      <span>Afventende Artikler</span>
-                    </NextLink>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              </SidebarMenuSub>
-            </CollapsibleContent>
-          </SidebarMenuItem>
-        </Collapsible>
+        {/* Artikler link - now single page */}
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild tooltip="Artikler">
+            <NextLink href="/artikler">
+              <FileText className="h-4 w-4" />
+              <span>Artikler</span>
+            </NextLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {/* Arkiv link */}
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild tooltip="Arkiv">
+            <NextLink href="/arkiv">
+              <Archive className="h-4 w-4" />
+              <span>Arkiv</span>
+            </NextLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
 
         {/* Prompts link - visible for all users */}
         <SidebarMenuItem>
@@ -85,6 +81,33 @@ export function NavMain() {
             </NextLink>
           </SidebarMenuButton>
         </SidebarMenuItem>
+
+        {/* Settings dropdown */}
+        <Collapsible asChild className="group/collapsible">
+          <SidebarMenuItem>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuButton tooltip="Settings">
+                <Settings />
+                <span>Settings</span>
+                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              </SidebarMenuButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub>
+                {settingsItems.map((settingsItem) => (
+                  <SidebarMenuSubItem key={settingsItem.title}>
+                    <SidebarMenuSubButton asChild>
+                      <NextLink href={settingsItem.url}>
+                        {settingsItem.icon && <settingsItem.icon className="h-4 w-4" />}
+                        <span>{settingsItem.title}</span>
+                      </NextLink>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                ))}
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuItem>
+        </Collapsible>
 
         {/* Admin dropdown - only visible for admin users */}
         {isAdmin && (

@@ -134,20 +134,6 @@ def create_tables():
                 FOREIGN KEY (`site_id`) REFERENCES `sites` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """,
-        #🔵CATEGORIES
-        "categories": """
-            CREATE TABLE IF NOT EXISTS `categories` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `name` VARCHAR(50) NOT NULL UNIQUE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        """,
-        #🔵TAGS
-        "tags": """
-            CREATE TABLE IF NOT EXISTS `tags` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `name` VARCHAR(50) NOT NULL UNIQUE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        """,
         #🔵ARTICLES
         "articles": """
             CREATE TABLE IF NOT EXISTS `articles` (
@@ -165,46 +151,14 @@ def create_tables():
                 `prompt_instruction` TEXT NOT NULL,
                 `instructions` TEXT NOT NULL,
                 `user_id` INT NOT NULL,
-                `category_id` INT NOT NULL,
                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (`site_id`) REFERENCES `sites` (`id`) ON DELETE CASCADE,
-                FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE RESTRICT,
                 FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
                 CONSTRAINT `chk_articles_url_required` CHECK (
                     status <> 'validating'
                     OR url IS NOT NULL
                 )
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        """,
-        #🔵ARTICLE_TAGS
-        "article_tags": """
-            CREATE TABLE IF NOT EXISTS `article_tags` (
-                `article_id` INT NOT NULL,
-                `tag_id` INT NOT NULL,
-                PRIMARY KEY (`article_id`, `tag_id`),
-                FOREIGN KEY (`article_id`) REFERENCES `articles` (`id`) ON DELETE CASCADE,
-                FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        """,
-        #🔵SITE_CATEGORIES
-        "site_categories": """
-            CREATE TABLE IF NOT EXISTS `site_categories` (
-                `site_id` INT NOT NULL,
-                `category_id` INT NOT NULL,
-                PRIMARY KEY (`site_id`, `category_id`),
-                FOREIGN KEY (`site_id`) REFERENCES `sites` (`id`) ON DELETE CASCADE,
-                FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        """,
-        #🔵SITE_TAGS
-        "site_tags": """
-            CREATE TABLE IF NOT EXISTS `site_tags` (
-                `site_id` INT NOT NULL,
-                `tag_id` INT NOT NULL,
-                PRIMARY KEY (`site_id`, `tag_id`),
-                FOREIGN KEY (`site_id`) REFERENCES `sites` (`id`) ON DELETE CASCADE,
-                FOREIGN KEY (`tag_id`) REFERENCES `tags` (`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         """,
         #🔵PROMPTS

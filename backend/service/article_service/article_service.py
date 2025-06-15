@@ -1,3 +1,4 @@
+import datetime
 import os
 import pymysql
 
@@ -24,7 +25,6 @@ curr_site = 'opdateret.dk'
 #Klik create knap og validerings process startes.
 #indsætter alt dataen.
 
-def write_article_service(article):
     #print(article)
     #print(article.title)
     # Vælg kategori
@@ -32,6 +32,7 @@ def write_article_service(article):
     # Vælg journalist
     # WP url MANGLER fra frontend
     #Endpoint = WP_URL/wp-json/wp/v2/posts
+def write_article_service(article):
 
     write_article_content(article)
     
@@ -40,14 +41,10 @@ def write_article_service(article):
 
 def validate_article_service(url, site_id, user_id):
 
-    #Validation skal sende kun url. Resten skal være tomme strings, så den går igennem.
-    status = 'validating'
-    response = 'success'
-    category_id = 2
-
     # Get site information including description
     site = get_site_by_id_service(site_id)
-    instructions = site[2]
+    instructions = site[3]
+    print(instructions)
     if not site:
         return {"error": "Site not found"}
 
@@ -56,6 +53,9 @@ def validate_article_service(url, site_id, user_id):
     if not valid_article:
         return {"error": "Ingen <article> fundet i den angivne URL"}
 
+    #Validation skal sende kun url. Resten skal være tomme strings, så den går igennem.
+    status = 'validating'
+    response = 'success'
 
     conn = connect_to_database()
 
@@ -63,15 +63,15 @@ def validate_article_service(url, site_id, user_id):
         with conn.cursor() as cursor:
             print("DEBUG: før cursor.execute")
             cursor.execute(
-                "INSERT INTO articles (site_id, title, teaser, content, img, status, response, url, prompt_instruction, instructions, user_id, category_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (site_id, title, teaser, content, image, status, response, url, prompt_instruction, instructions, user_id, category_id)
+                "INSERT INTO articles (site_id, title, teaser, content, img, status, response, url, prompt_instruction, instructions, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (site_id, title, teaser, content, image, status, response, url, prompt_instruction, instructions, user_id)
             )
             print("DEBUG: SQL-statement blev eksekveret")
             conn.commit()
             print("DEBUG: efter commit")
             return {
                 "title": title, 
-                "content": content, 
+                "content": content,
                 "image": image, 
                 "url": url, 
                 "instructions": instructions,
@@ -92,7 +92,6 @@ def validate_article_service(url, site_id, user_id):
     #Content
     #Prompt 
     #scheduled_publish_at
-    #Category_id
     #User_id
     #image
 
@@ -113,8 +112,8 @@ def update_article_service(article):
     # Tjek om alle nødvendige felter er udfyldt
     schedule = all([
         bool(article.title), bool(article.url), bool(article.content),
-        bool(article.prompt_instruction), bool(article.scheduled_publish_at),
-        bool(article.category_id), bool(article.user_id), bool(article.img),
+        bool(article.prompt_instruction), bool(article.scheduled_publish_at), 
+        bool(article.user_id), bool(article.img),
         bool(article.teaser)
     ])
     status = 'scheduled' if schedule else 'validating'
@@ -124,11 +123,11 @@ def update_article_service(article):
         with conn.cursor() as cursor:
             cursor.execute(
                 "UPDATE articles SET title=%s, content=%s, img=%s, url=%s, "
-                "prompt_instruction=%s, user_id=%s, category_id=%s, "
+                "prompt_instruction=%s, user_id=%s, "
                 "scheduled_publish_at=%s, status=%s, teaser=%s WHERE id=%s",
                 (
                     article.title, article.content, article.img, article.url,
-                    article.prompt_instruction, article.user_id, article.category_id,
+                    article.prompt_instruction, article.user_id,
                     article.scheduled_publish_at, status, article.teaser, article.id,
                 )
             )
@@ -181,5 +180,17 @@ def get_unvalidated_articles_service(site_id: int):
             return articles
     except pymysql.MySQLError as e:
         return {"error": "Fejl under hentning af ikke validerede artikler", "detail": str(e)}
+    finally:
+        conn.close()
+
+def get_published_articles_service(site_id: int):
+    conn = connect_to_database()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM articles WHERE site_id = %s AND status = 'published'", (site_id,))
+            articles = cursor.fetchall()
+            return articles
+    except pymysql.MySQLError as e:
+        return {"error": "Fejl under hentning af publicerede artikler", "detail": str(e)}
     finally:
         conn.close()

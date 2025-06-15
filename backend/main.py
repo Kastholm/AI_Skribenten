@@ -4,7 +4,8 @@ from router.prompt_router import router as prompt_router
 from router.user_router import router as user_router
 from router.site_router import router as site_router
 from router.article_router import router as article_router
-from router.category_router import router as category_router
+from router.admin.admin_router import router as admin_router
+
 app = FastAPI()
 
 # Configure CORS
@@ -24,7 +25,7 @@ app.include_router(user_router)
 app.include_router(site_router)
 app.include_router(prompt_router)
 app.include_router(article_router)
-app.include_router(category_router)
+app.include_router(admin_router)
 
 if __name__ == "__main__":
     import uvicorn
