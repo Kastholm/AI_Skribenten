@@ -41,5 +41,6 @@ class PublishArticle(BaseModel):
 
 class ValidateRequest(BaseModel):
     url: str
+    type: str
     site_id: int
     user_id: int

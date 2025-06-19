@@ -17,23 +17,22 @@ import { useAuth } from "../../context/auth-context"
 import { API_HOST } from "../../env"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
-  AlertCircle,
-  Clock,
+  Calendar,
   Loader2,
-  CheckCircle,
   ExternalLink,
   Edit,
   Trash2,
+  AlertCircle,
+  CheckCircle,
+  Clock,
   AlertTriangle,
-  Calendar,
 } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EditArticleDialog } from "@/components/edit-article-dialog"
+import { ArticleCard } from "@/components/article-card"
+import { ViewToggle } from "@/components/view-toggle"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,79 +70,34 @@ type User = {
   role: string
 }
 
-export default function AfventendeArtiklerPage() {
+type Site = {
+  id: number
+  name: string
+  page_url: string
+  description: string
+}
+
+export default function ScheduledArticlesPage() {
   const { user } = useAuth()
-  const [url, setUrl] = useState("")
-  const [isValidating, setIsValidating] = useState(false)
-  const [validationError, setValidationError] = useState("")
-  const [validationSuccess, setValidationSuccess] = useState("")
-  const [unvalidatedArticles, setUnvalidatedArticles] = useState<Article[]>([])
+  const [scheduledArticles, setScheduledArticles] = useState<Article[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeSiteId, setActiveSiteId] = useState<number | null>(null)
+  const [activeSite, setActiveSite] = useState<Site | null>(null)
   const [editingArticle, setEditingArticle] = useState<Article | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [deletingArticle, setDeletingArticle] = useState<Article | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [allUsers, setAllUsers] = useState<User[]>([])
-  const [validationType, setValidationType] = useState<"article" | "sitemap">("article")
+  const [isPublishing, setIsPublishing] = useState<number | null>(null)
+  const [view, setView] = useState<"table" | "cards">("table") // Default to table for scheduled
 
-  // Handle URL validation
-  const handleValidateUrl = async () => {
-    setValidationError("")
-    setValidationSuccess("")
-
-    if (!activeSiteId || !user?.id) {
-      setValidationError("Mangler site eller bruger information")
-      return
-    }
-
-    setIsValidating(true)
-
-    try {
-      console.log("Sending URL validation with:", { url, site_id: activeSiteId, user_id: user.id })
-
-      const response = await fetch(`${API_HOST}/articles/validate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: url,
-          site_id: activeSiteId,
-          user_id: user.id,
-          type: validationType,
-        }),
-      })
-
-      if (response.ok) {
-        setValidationSuccess("URL validated successfully!")
-        setUrl("") // Clear the input
-        console.log("URL validation successful for:", url)
-
-        // Refresh articles after validation
-        if (activeSiteId) {
-          fetchUnvalidatedArticles(activeSiteId)
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({ error: "Failed to validate URL" }))
-        console.error("Validation error response:", errorData)
-        setValidationError(errorData.error || "Failed to validate URL")
-      }
-    } catch (error) {
-      console.error("Error validating URL:", error)
-      setValidationError("An error occurred while validating the URL")
-    } finally {
-      setIsValidating(false)
-    }
-  }
-
-  // Fetch unvalidated articles for a specific site
-  const fetchUnvalidatedArticles = async (siteId: number) => {
+  // Fetch scheduled articles for a specific site
+  const fetchScheduledArticles = async (siteId: number) => {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_HOST}/articles/unvalidated_articles/${siteId}`, {
+      const response = await fetch(`${API_HOST}/articles/scheduled_articles/${siteId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -153,9 +107,6 @@ export default function AfventendeArtiklerPage() {
       if (response.ok) {
         const data = await response.json()
         if (Array.isArray(data)) {
-          // Map articles data from array format to object format
-          // Korrekt mapping baseret på tabel strukturen:
-          // id, site_id, title, teaser, content, img, status, response, scheduled_publish_at, published_at, url, prompt_instruction, instructions, user_id, category_id, created_at, updated_at
           const formattedArticles: Article[] = data.map((articleArray: any[]) => ({
             id: articleArray[0],
             site_id: articleArray[1],
@@ -174,11 +125,11 @@ export default function AfventendeArtiklerPage() {
             created_at: articleArray[14],
             updated_at: articleArray[15],
           }))
-          setUnvalidatedArticles(formattedArticles)
+          setScheduledArticles(formattedArticles)
         }
       }
     } catch (error) {
-      console.error("Error fetching unvalidated articles:", error)
+      console.error("Error fetching scheduled articles:", error)
     } finally {
       setIsLoading(false)
     }
@@ -204,8 +155,6 @@ export default function AfventendeArtiklerPage() {
         if (usersData.success === false) {
           console.error("Not authorized to fetch users:", usersData.error)
         } else if (usersData.users && Array.isArray(usersData.users)) {
-          // Map users data from array format
-          // [id, name, username, password, role]
           const formattedUsers: User[] = usersData.users.map((userArray: any[]) => ({
             id: userArray[0],
             name: userArray[1],
@@ -220,7 +169,7 @@ export default function AfventendeArtiklerPage() {
     }
   }
 
-  // Get active site ID from user's sites
+  // Fetch user sites and listen for site changes
   useEffect(() => {
     const fetchUserSites = async () => {
       if (!user?.id) return
@@ -236,11 +185,20 @@ export default function AfventendeArtiklerPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.sites && Array.isArray(data.sites) && data.sites.length > 0) {
-            // Use the first site for now
-            const firstSiteId = data.sites[0][0] // First site's ID
-            setActiveSiteId(firstSiteId)
-            fetchUnvalidatedArticles(firstSiteId)
-            fetchAllUsers()
+            const formattedSites: Site[] = data.sites.map((siteArray: any[]) => ({
+              id: siteArray[0],
+              name: siteArray[1],
+              description: siteArray[2],
+              page_url: siteArray[3],
+            }))
+
+            // Set first site as active by default if no active site is set
+            if (!activeSiteId && formattedSites.length > 0) {
+              const firstSite = formattedSites[0]
+              setActiveSiteId(firstSite.id)
+              setActiveSite(firstSite)
+              fetchScheduledArticles(firstSite.id)
+            }
           } else {
             setIsLoading(false)
           }
@@ -252,13 +210,41 @@ export default function AfventendeArtiklerPage() {
     }
 
     fetchUserSites()
+    fetchAllUsers()
   }, [user?.id])
+
+  // Listen for site changes from localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedActiveSite = localStorage.getItem("activeSite")
+      if (storedActiveSite) {
+        try {
+          const siteData = JSON.parse(storedActiveSite)
+          if (siteData.id !== activeSiteId) {
+            setActiveSiteId(siteData.id)
+            setActiveSite(siteData)
+            fetchScheduledArticles(siteData.id)
+          }
+        } catch (error) {
+          console.error("Error parsing stored active site:", error)
+        }
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("activeSiteChanged", handleStorageChange)
+    handleStorageChange()
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("activeSiteChanged", handleStorageChange)
+    }
+  }, [activeSiteId])
 
   // Format date string
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Ikke planlagt"
 
-    // Check for valid date
     const date = new Date(dateString)
     if (isNaN(date.getTime()) || date.getFullYear() < 2000) {
       return "Ugyldig dato"
@@ -322,9 +308,8 @@ export default function AfventendeArtiklerPage() {
       })
 
       if (response.ok) {
-        // Refresh articles list
         if (activeSiteId) {
-          fetchUnvalidatedArticles(activeSiteId)
+          fetchScheduledArticles(activeSiteId)
         }
       }
     } catch (error) {
@@ -339,7 +324,7 @@ export default function AfventendeArtiklerPage() {
   // Handle save from edit dialog
   const handleSaveArticle = () => {
     if (activeSiteId) {
-      fetchUnvalidatedArticles(activeSiteId)
+      fetchScheduledArticles(activeSiteId)
     }
   }
 
@@ -347,6 +332,45 @@ export default function AfventendeArtiklerPage() {
   const openUrl = (url: string) => {
     if (url) {
       window.open(url, "_blank", "noopener,noreferrer")
+    }
+  }
+
+  // Handle publish article
+  const handlePublishArticle = async (article: Article) => {
+    setIsPublishing(article.id)
+
+    try {
+      const publishData = {
+        id: article.id,
+        site_id: article.site_id,
+        title: article.title,
+        teaser: article.teaser,
+        content: article.content,
+        img: article.img,
+        prompt_instructions: article.prompt_instruction,
+        instructions: article.instructions,
+        user_id: article.user_id,
+      }
+
+      const response = await fetch(`${API_HOST}/articles/write_article`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(publishData),
+      })
+
+      if (response.ok) {
+        if (activeSiteId) {
+          fetchScheduledArticles(activeSiteId)
+        }
+      } else {
+        console.error("Failed to publish article:", await response.text())
+      }
+    } catch (error) {
+      console.error("Error publishing article:", error)
+    } finally {
+      setIsPublishing(null)
     }
   }
 
@@ -366,131 +390,64 @@ export default function AfventendeArtiklerPage() {
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbLink href="/artikler">Artikler</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator className="hidden md:block" />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>Afventende Artikler</BreadcrumbPage>
+                    <BreadcrumbPage>Scheduled Articles {activeSite && `- ${activeSite.name}`}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-            {/* URL Validation Section */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>Valider Artikel URL</CardTitle>
-                <CardDescription>Indtast enhver URL - alle URLs accepteres og behandles af systemet</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Label htmlFor="url" className="sr-only">
-                      URL
-                    </Label>
-                    <Input
-                      id="url"
-                      placeholder="Indtast enhver URL..."
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleValidateUrl()
-                        }
-                      }}
-                    />
-                  </div>
-                  <Button onClick={handleValidateUrl} disabled={isValidating || !activeSiteId || !user?.id}>
-                    {isValidating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Validerer...
-                      </>
-                    ) : (
-                      "Valider"
-                    )}
-                  </Button>
-                </div>
-
-                {/* Type Selection */}
-                <div className="flex items-center gap-6 pt-2">
-                  <Label className="text-sm font-medium">Type:</Label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="article-type"
-                      checked={validationType === "article"}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setValidationType("article")
-                        }
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <Label htmlFor="article-type" className="text-sm">
-                      Article
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="sitemap-type"
-                      checked={validationType === "sitemap"}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setValidationType("sitemap")
-                        }
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <Label htmlFor="sitemap-type" className="text-sm">
-                      Sitemap
-                    </Label>
-                  </div>
-                </div>
-
-                {validationError && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{validationError}</AlertDescription>
-                  </Alert>
-                )}
-                {validationSuccess && (
-                  <Alert className="bg-green-50 border-green-200">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800">{validationSuccess}</AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Unvalidated Articles Table */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Afventende Artikler
+                      <Calendar className="h-5 w-5" />
+                      Scheduled Articles
+                      {activeSite && (
+                        <span className="text-sm font-normal text-muted-foreground">for {activeSite.name}</span>
+                      )}
                     </CardTitle>
-                    <CardDescription>Oversigt over alle afventende artikler for dit site</CardDescription>
+                    <CardDescription>
+                      Oversigt over alle planlagte artikler for {activeSite?.name || "dit site"}
+                    </CardDescription>
                   </div>
-                  <Badge variant="secondary" className="text-lg px-3 py-1">
-                    {unvalidatedArticles.length} artikler
-                  </Badge>
+                  <div className="flex items-center gap-4">
+                    <ViewToggle view={view} onViewChange={setView} />
+                    <Badge variant="secondary" className="text-lg px-3 py-1">
+                      {scheduledArticles.length} artikler
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">Indlæser afventende artikler...</span>
+                    <span className="ml-2 text-muted-foreground">Indlæser planlagte artikler...</span>
                   </div>
-                ) : unvalidatedArticles.length === 0 ? (
+                ) : scheduledArticles.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Clock className="h-12 w-12 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">Ingen afventende artikler fundet</p>
+                    <Calendar className="h-12 w-12 text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">
+                      Ingen planlagte artikler fundet for {activeSite?.name || "dette site"}
+                    </p>
+                  </div>
+                ) : view === "cards" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {scheduledArticles.map((article) => (
+                      <ArticleCard
+                        key={article.id}
+                        article={article}
+                        onEdit={handleEditArticle}
+                        onDelete={handleDeleteArticle}
+                        onOpenUrl={openUrl}
+                        onPublish={handlePublishArticle}
+                        getUserName={getUserName}
+                        isPublishing={isPublishing === article.id}
+                        showPublishButton={true}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -506,7 +463,7 @@ export default function AfventendeArtiklerPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {unvalidatedArticles.map((article) => (
+                        {scheduledArticles.map((article) => (
                           <TableRow key={article.id}>
                             <TableCell>{getStatusIcon(article.status)}</TableCell>
                             <TableCell className="font-medium">
@@ -521,11 +478,7 @@ export default function AfventendeArtiklerPage() {
                               <div className="text-sm text-muted-foreground">{formatDate(article.created_at)}</div>
                             </TableCell>
                             <TableCell>
-                              <div className="text-sm text-muted-foreground">
-                                {article.scheduled_publish_at
-                                  ? formatDate(article.scheduled_publish_at)
-                                  : "Ikke planlagt"}
-                              </div>
+                              <div className="text-sm">{formatDate(article.scheduled_publish_at)}</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -558,6 +511,23 @@ export default function AfventendeArtiklerPage() {
                                     <ExternalLink className="h-4 w-4" />
                                   </Button>
                                 )}
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handlePublishArticle(article)}
+                                  disabled={isPublishing === article.id}
+                                  className="ml-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-4"
+                                  title="Udgiv artikel"
+                                >
+                                  {isPublishing === article.id ? (
+                                    <>
+                                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                      Udgiver...
+                                    </>
+                                  ) : (
+                                    "Publish"
+                                  )}
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>

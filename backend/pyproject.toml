@@ -11,5 +11,6 @@ dependencies = [
     "beautifulsoup4>=4.13.4",
     "PyMySQL>=1.1.1",
     "fastapi>=0.115.12",
-    "uvicorn>=0.34.2"
+    "uvicorn>=0.34.2",
+    "pillow>=11.2.1"
 ]

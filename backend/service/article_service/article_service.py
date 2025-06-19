@@ -1,6 +1,8 @@
 import datetime
 import os
+from bs4 import BeautifulSoup
 import pymysql
+import requests
 
 from service.article_service.write_article import write_article_content
 from service.site_service import get_site_by_id_service
@@ -21,43 +23,8 @@ wp_name = 'root'
 wp_pass = os.getenv('WP_AUTH')
 curr_site = 'opdateret.dk'
 
-#CP url
-#Klik create knap og validerings process startes.
-#indsætter alt dataen.
 
-    #print(article)
-    #print(article.title)
-    # Vælg kategori
-    # Vælg tag
-    # Vælg journalist
-    # WP url MANGLER fra frontend
-    #Endpoint = WP_URL/wp-json/wp/v2/posts
-def write_article_service(article):
-
-    write_article_content(article)
-    
-    # Step 1 = Skriv artikel og udgiv til CMS
-    # Sted 2 = If success, skift artikel status til published
-
-def validate_article_service(url, site_id, user_id):
-
-    # Get site information including description
-    site = get_site_by_id_service(site_id)
-    instructions = site[3]
-    print(instructions)
-    if not site:
-        return {"error": "Site not found"}
-
-    # Get data from ChatGPT
-    title, image, content, teaser, prompt_instruction, valid_article = validate_article_content(url, instructions)
-    if not valid_article:
-        return {"error": "Ingen <article> fundet i den angivne URL"}
-
-    #Validation skal sende kun url. Resten skal være tomme strings, så den går igennem.
-    status = 'validating'
-    response = 'success'
-
-    conn = connect_to_database()
+def post_article_service(title, image, content, teaser, prompt_instruction, valid_article, site_id, user_id, status, response, url, instructions, conn):
 
     try:
         with conn.cursor() as cursor:
@@ -79,10 +46,68 @@ def validate_article_service(url, site_id, user_id):
     except pymysql.MySQLError as e:
         print("DEBUG: SQL Error:", str(e))
         return {"error": "Fejl under oprettelse af artikel", "detail": str(e)}
+
+
+#CP url
+#Klik create knap og validerings process startes.
+#indsætter alt dataen.
+
+    #print(article)
+    #print(article.title)
+    # Vælg kategori
+    # Vælg tag
+    # Vælg journalist
+    # WP url MANGLER fra frontend
+    #Endpoint = WP_URL/wp-json/wp/v2/posts
+def write_article_service(article):
+
+    write_article_content(article)
+    
+    # Step 1 = Skriv artikel og udgiv til CMS
+    # Sted 2 = If success, skift artikel status til published
+
+def validate_article_service(url, site_id, user_id, type):
+
+    # Get site information including description
+    site = get_site_by_id_service(site_id)
+    instructions = site[3]
+    #Validation skal sende kun url. Resten skal være tomme strings, så den går igennem.
+    status = 'validating'
+    response = 'success'
+    conn = connect_to_database()
+
+    if not site:
+        return {"error": "Site not found"}
+
+    # Get data from ChatGPT
+    try:
+        if type == 'article':
+            title, image, content, teaser, prompt_instruction, valid_article = validate_article_content(url, instructions)
+            post_article_service(title, image, content, teaser, prompt_instruction, 
+                                 valid_article, site_id, user_id, status, response, 
+                                 url, instructions, conn)
+        elif type == 'sitemap':
+            bs_response = requests.get(url)
+            soup = BeautifulSoup(bs_response.text, 'xml')
+            urls = [tag.text for tag in soup.find_all() if tag.name == 'loc']
+            for url in urls:
+                if 'jpg' in url or 'png' in url or 'jpeg' in url or 'webp' in url:
+                    urls.remove(url)
+
+            for url in urls[:4]:
+                print(url, 'url')
+                title, image, content, teaser, prompt_instruction, valid_article = validate_article_content(url, instructions)
+                post_article_service(title, image, content, teaser, prompt_instruction, 
+                                     valid_article, site_id, user_id, status, response, 
+                                     url, instructions, conn)
     finally:
         conn.close()
 
+    if not valid_article:
+        return {"error": "Ingen <article> fundet i den angivne URL"}
 
+
+ 
 
 
 

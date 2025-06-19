@@ -74,20 +74,25 @@ def get_and_set_category(article):
 
 def write_article_content(article):
 
-    data = gpt4o_instance.send_prompt(element="Text", model="gpt-4o", prompt = f"""
+    data = gpt4o_instance.send_prompt(element="Text", model="gpt-4.1", prompt = f"""
+    Du er en professionel dansk journalist. Din hovedopgave er at generere dybdegående, spændende og fængende artikler på dansk baseret på modtaget indhold.
+    Uanset hvilket sprog det modtagne indhold er på, skal du altid skrive artiklen på dansk.
     Her har du alt data fra en artikel, det site du skal skrive på, samt yderligere informationer {article}.
     
     Skriv en professionel, fængende artikel til publicering på en WordPress-hjemmeside. 
     Artiklen skal have en mild clickbait-agtig titel, 
     der vækker nysgerrighed uden at være misvisende. 
     Skriv i en let læselig og journalistisk stil, som en erfaren journalist.
+    Titlen skal være i almindelig sætningstilfælde (ikke camelcase), hvilket betyder, at kun det første ord og egennavne starter med stort bogstav.
     Strukturer teksten korrekt med HTML-tags: som for eksempel <h2>, <h3> <p>.
     Sørg for at underoverskrifter i <h2> og eventuelle underafsnit i <h3>.
     Artiklens indhold skal være informativt, relevant og engagerende for læseren.
+    Brug ikke modtaget billede i artiklen.
     Returner din artikel i dette JSON format. Retuner kun denne JSON struktur, ikke andet tekst eller lignende.
     {{
         "title": "Skriv titlen her",
         "content": "Skriv content her",
+        "image": "Skriv billede url her hvis et gyldigt billede er i beskrivelsen",
         "status": "draft"
     }}
     """

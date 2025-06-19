@@ -34,6 +34,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EditArticleDialog } from "@/components/edit-article-dialog"
+import { ArticleCard } from "@/components/article-card"
+import { ViewToggle } from "@/components/view-toggle"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,7 +73,14 @@ type User = {
   role: string
 }
 
-export default function AfventendeArtiklerPage() {
+type Site = {
+  id: number
+  name: string
+  page_url: string
+  description: string
+}
+
+export default function ReviewArticlesPage() {
   const { user } = useAuth()
   const [url, setUrl] = useState("")
   const [isValidating, setIsValidating] = useState(false)
@@ -80,13 +89,16 @@ export default function AfventendeArtiklerPage() {
   const [unvalidatedArticles, setUnvalidatedArticles] = useState<Article[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeSiteId, setActiveSiteId] = useState<number | null>(null)
+  const [activeSite, setActiveSite] = useState<Site | null>(null)
   const [editingArticle, setEditingArticle] = useState<Article | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [deletingArticle, setDeletingArticle] = useState<Article | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [allUsers, setAllUsers] = useState<User[]>([])
+  const [view, setView] = useState<"table" | "cards">("cards") // Default to cards for review
   const [validationType, setValidationType] = useState<"article" | "sitemap">("article")
+  const [isPublishing, setIsPublishing] = useState<number | null>(null)
 
   // Handle URL validation
   const handleValidateUrl = async () => {
@@ -101,8 +113,6 @@ export default function AfventendeArtiklerPage() {
     setIsValidating(true)
 
     try {
-      console.log("Sending URL validation with:", { url, site_id: activeSiteId, user_id: user.id })
-
       const response = await fetch(`${API_HOST}/articles/validate`, {
         method: "POST",
         headers: {
@@ -118,16 +128,12 @@ export default function AfventendeArtiklerPage() {
 
       if (response.ok) {
         setValidationSuccess("URL validated successfully!")
-        setUrl("") // Clear the input
-        console.log("URL validation successful for:", url)
-
-        // Refresh articles after validation
+        setUrl("")
         if (activeSiteId) {
           fetchUnvalidatedArticles(activeSiteId)
         }
       } else {
         const errorData = await response.json().catch(() => ({ error: "Failed to validate URL" }))
-        console.error("Validation error response:", errorData)
         setValidationError(errorData.error || "Failed to validate URL")
       }
     } catch (error) {
@@ -153,9 +159,6 @@ export default function AfventendeArtiklerPage() {
       if (response.ok) {
         const data = await response.json()
         if (Array.isArray(data)) {
-          // Map articles data from array format to object format
-          // Korrekt mapping baseret på tabel strukturen:
-          // id, site_id, title, teaser, content, img, status, response, scheduled_publish_at, published_at, url, prompt_instruction, instructions, user_id, category_id, created_at, updated_at
           const formattedArticles: Article[] = data.map((articleArray: any[]) => ({
             id: articleArray[0],
             site_id: articleArray[1],
@@ -204,8 +207,6 @@ export default function AfventendeArtiklerPage() {
         if (usersData.success === false) {
           console.error("Not authorized to fetch users:", usersData.error)
         } else if (usersData.users && Array.isArray(usersData.users)) {
-          // Map users data from array format
-          // [id, name, username, password, role]
           const formattedUsers: User[] = usersData.users.map((userArray: any[]) => ({
             id: userArray[0],
             name: userArray[1],
@@ -236,11 +237,19 @@ export default function AfventendeArtiklerPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.sites && Array.isArray(data.sites) && data.sites.length > 0) {
-            // Use the first site for now
-            const firstSiteId = data.sites[0][0] // First site's ID
-            setActiveSiteId(firstSiteId)
-            fetchUnvalidatedArticles(firstSiteId)
-            fetchAllUsers()
+            const formattedSites: Site[] = data.sites.map((siteArray: any[]) => ({
+              id: siteArray[0],
+              name: siteArray[1],
+              description: siteArray[2],
+              page_url: siteArray[3],
+            }))
+
+            if (!activeSiteId && formattedSites.length > 0) {
+              const firstSite = formattedSites[0]
+              setActiveSiteId(firstSite.id)
+              setActiveSite(firstSite)
+              fetchUnvalidatedArticles(firstSite.id)
+            }
           } else {
             setIsLoading(false)
           }
@@ -252,13 +261,41 @@ export default function AfventendeArtiklerPage() {
     }
 
     fetchUserSites()
+    fetchAllUsers()
   }, [user?.id])
+
+  // Listen for site changes from localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedActiveSite = localStorage.getItem("activeSite")
+      if (storedActiveSite) {
+        try {
+          const siteData = JSON.parse(storedActiveSite)
+          if (siteData.id !== activeSiteId) {
+            setActiveSiteId(siteData.id)
+            setActiveSite(siteData)
+            fetchUnvalidatedArticles(siteData.id)
+          }
+        } catch (error) {
+          console.error("Error parsing stored active site:", error)
+        }
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("activeSiteChanged", handleStorageChange)
+    handleStorageChange()
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("activeSiteChanged", handleStorageChange)
+    }
+  }, [activeSiteId])
 
   // Format date string
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Ikke planlagt"
 
-    // Check for valid date
     const date = new Date(dateString)
     if (isNaN(date.getTime()) || date.getFullYear() < 2000) {
       return "Ugyldig dato"
@@ -322,7 +359,6 @@ export default function AfventendeArtiklerPage() {
       })
 
       if (response.ok) {
-        // Refresh articles list
         if (activeSiteId) {
           fetchUnvalidatedArticles(activeSiteId)
         }
@@ -340,6 +376,45 @@ export default function AfventendeArtiklerPage() {
   const handleSaveArticle = () => {
     if (activeSiteId) {
       fetchUnvalidatedArticles(activeSiteId)
+    }
+  }
+
+  // Handle publish article
+  const handlePublishArticle = async (article: Article) => {
+    setIsPublishing(article.id)
+
+    try {
+      const publishData = {
+        id: article.id,
+        site_id: article.site_id,
+        title: article.title,
+        teaser: article.teaser,
+        content: article.content,
+        img: article.img,
+        prompt_instructions: article.prompt_instruction,
+        instructions: article.instructions,
+        user_id: article.user_id,
+      }
+
+      const response = await fetch(`${API_HOST}/articles/write_article`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(publishData),
+      })
+
+      if (response.ok) {
+        if (activeSiteId) {
+          fetchUnvalidatedArticles(activeSiteId)
+        }
+      } else {
+        console.error("Failed to publish article:", await response.text())
+      }
+    } catch (error) {
+      console.error("Error publishing article:", error)
+    } finally {
+      setIsPublishing(null)
     }
   }
 
@@ -366,11 +441,7 @@ export default function AfventendeArtiklerPage() {
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbLink href="/artikler">Artikler</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator className="hidden md:block" />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>Afventende Artikler</BreadcrumbPage>
+                    <BreadcrumbPage>Review Articles {activeSite && `- ${activeSite.name}`}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
@@ -465,32 +536,54 @@ export default function AfventendeArtiklerPage() {
               </CardContent>
             </Card>
 
-            {/* Unvalidated Articles Table */}
+            {/* Review Articles Section */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
-                      Afventende Artikler
+                      Review Articles
+                      {activeSite && (
+                        <span className="text-sm font-normal text-muted-foreground">for {activeSite.name}</span>
+                      )}
                     </CardTitle>
-                    <CardDescription>Oversigt over alle afventende artikler for dit site</CardDescription>
+                    <CardDescription>Oversigt over alle artikler der afventer review</CardDescription>
                   </div>
-                  <Badge variant="secondary" className="text-lg px-3 py-1">
-                    {unvalidatedArticles.length} artikler
-                  </Badge>
+                  <div className="flex items-center gap-4">
+                    <ViewToggle view={view} onViewChange={setView} />
+                    <Badge variant="secondary" className="text-lg px-3 py-1">
+                      {unvalidatedArticles.length} artikler
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">Indlæser afventende artikler...</span>
+                    <span className="ml-2 text-muted-foreground">Indlæser artikler til review...</span>
                   </div>
                 ) : unvalidatedArticles.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Clock className="h-12 w-12 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">Ingen afventende artikler fundet</p>
+                    <p className="text-muted-foreground">Ingen artikler til review fundet</p>
+                  </div>
+                ) : view === "cards" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {unvalidatedArticles.map((article) => (
+                      <ArticleCard
+                        key={article.id}
+                        article={article}
+                        onEdit={handleEditArticle}
+                        onDelete={handleDeleteArticle}
+                        onOpenUrl={openUrl}
+                        onPublish={handlePublishArticle}
+                        getUserName={getUserName}
+                        isPublishing={isPublishing === article.id}
+                        showPublishButton={true}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="rounded-md border">

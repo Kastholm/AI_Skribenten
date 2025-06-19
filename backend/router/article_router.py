@@ -9,7 +9,7 @@ router = APIRouter(
 
 @router.post("/validate")
 def validate_article(request: ValidateRequest):
-    return validate_article_service(request.url, request.site_id, request.user_id)
+    return validate_article_service(request.url, request.site_id, request.user_id, request.type)
 
 @router.post("/write_article")
 def write_article(article: PublishArticle):
