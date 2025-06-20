@@ -74,6 +74,10 @@ def get_and_set_category(article):
 
 def write_article_content(article):
 
+    #print(article)
+    #print(article.img)
+
+
     data = gpt4o_instance.send_prompt(element="Text", model="gpt-4.1", prompt = f"""
     Du er en professionel dansk journalist. Din hovedopgave er at generere dybdegående, spændende og fængende artikler på dansk baseret på modtaget indhold.
     Uanset hvilket sprog det modtagne indhold er på, skal du altid skrive artiklen på dansk.
@@ -112,5 +116,17 @@ def write_article_content(article):
         return {"message": "Fejl under oprettelse af artikel", "status_code": response.status_code, "article_id": None}
 
 
-    # Step 1 = Skriv artikel og udgiv til CMS
-    # Sted 2 = If success, skift artikel status til published
+
+
+
+    #image_url = gpt4o_instance.send_prompt(element="Image", model="dall-e-3", prompt = f"""
+    #Here is the image: {article.img} you need to enchance.
+    #Generate a highly professional, photorealistic image for an article. 
+    #Change the people's faces and minor background details, so the image looks new but similar to the original. 
+    #Focus on sharp details, natural lighting, and realistic colors. 
+    #Style: editorial, suitable for a professional news article.
+    #Return the image url in this JSON format: {{"image_url": "image_url"}}.
+    #""")
+    #print(image_url, '🔴')
+    #dall_e_image_url = extract_json_from_text(image_url)
+    #print(dall_e_image_url)
